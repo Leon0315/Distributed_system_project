@@ -6,7 +6,6 @@ import "os"
 import "net/rpc"
 import "net/http"
 import "sync"
-import "fmt"
 import "time"
 import "strconv"
 
@@ -37,6 +36,7 @@ func (m *Master) GetTaskToStart ()(Job) {
     } 
 
     if m.phase == 0 {
+        
         for i := 0; i < len(m.tasks); i ++ {
             if m.tasks[i].Inprogress == false && m.tasks[i].Finished == false {
                 
@@ -52,9 +52,12 @@ func (m *Master) GetTaskToStart ()(Job) {
                 return jb
             }
         }
+        
     } else if m.phase == 1 {   
+        
         for i := 0; i < len(m.reduceTasks); i ++ { 
             if m.reduceTasks[i].Inprogress == false && m.reduceTasks[i].Finished == false { 
+                
                 if thisProduct, ok := m.reduceTasks[i]; ok { 
                     thisProduct.Inprogress = true
                     jb.Inprogress = true
