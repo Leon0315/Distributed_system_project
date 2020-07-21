@@ -1,45 +1,63 @@
 package pbservice
 
-import "hash/fnv"
+import (
+	"viewservice"
+)
 
 const (
-  OK = "OK"
-  ErrNoKey = "ErrNoKey"
-  ErrWrongServer = "ErrWrongServer"
+	OK             = "OK"
+	ErrNoKey       = "ErrNoKey"
+	ErrWrongServer = "ErrWrongServer"
 )
+
+const (
+	Put    = "Put"
+	Append = "Append"
+)
+
 type Err string
 
-type PutArgs struct {
-  Key string
-  Value string
-  DoHash bool // For PutHash
-  // You'll have to add definitions here.
+// Put or Append
+type PutAppendArgs struct {
+	Key   string
+	Value string
+	// You'll have to add definitions here.
 
-  // Field names must start with capital letters,
-  // otherwise RPC will break.
+	Seq int64
+	Op  string
+	// Field names must start with capital letters,
+	// otherwise RPC will break.
 }
 
-type PutReply struct {
-  Err Err
-  PreviousValue string // For PutHash
+type PutAppendReply struct {
+	Err Err
 }
 
 type GetArgs struct {
-  Key string
-  // You'll have to add definitions here.
+	Key string
+	// You'll have to add definitions here.
 }
 
 type GetReply struct {
-  Err Err
-  Value string
+	Err   Err
+	Value string
 }
-
 
 // Your RPC definitions here.
-
-func hash(s string) uint32 {
-  h := fnv.New32a()
-  h.Write([]byte(s))
-  return h.Sum32()
+type SyncArgs struct {
+	Data map[string]string
+	Seen map[int64]bool
+	View viewservice.View
 }
 
+type SyncReply struct {
+}
+
+type SyncUpdateArgs struct {
+	Key   string
+	Value string
+	Seq   int64
+}
+
+type SyncUpdateReply struct {
+}
