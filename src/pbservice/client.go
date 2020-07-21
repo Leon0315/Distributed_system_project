@@ -10,7 +10,7 @@ import "math/big"
 
 type Clerk struct {
 	vs *viewservice.Clerk
-	// Your declarations here
+	view viewservice.View
 }
 
 // this may come in handy.
@@ -24,8 +24,15 @@ func nrand() int64 {
 func MakeClerk(vshost string, me string) *Clerk {
 	ck := new(Clerk)
 	ck.vs = viewservice.MakeClerk(me, vshost)
-	// Your ck.* initializations here
+  //ck.* initializations
 
+  for {
+		var ok bool
+		ck.view, ok = ck.vs.Get()
+		if ok {
+			break
+		}
+	}
 	return ck
 }
 
@@ -72,10 +79,22 @@ func call(srv string, rpcname string,
 // says the key doesn't exist (has never been Put().
 //
 func (ck *Clerk) Get(key string) string {
+  var reply GetReply
+  args := &GetArgs{Key: key}
 
-	// Your code here.
-
-	return "???"
+  for {
+    ok := call(ck.view.Primary, "PBServer.Get", args, &reply)
+    if !ok || reply.Err == ErrWrongServer {
+      ck.view, _ = ck.vs.Get()
+    } else {
+      if reply.Err == OK {
+				return reply.Value
+			} else if reply.Err == ErrNoKey {
+				return ""
+			}
+    }
+  }
+	return ""
 }
 
 //
@@ -83,7 +102,20 @@ func (ck *Clerk) Get(key string) string {
 //
 func (ck *Clerk) PutAppend(key string, value string, op string) {
 
-	// Your code here.
+	args := &PutAppendArgs{Key: key, Value: value, Op: op, Seq: nrand()}
+	var reply PutAppendReply
+
+	for {
+		ok := call(ck.view.Primary, "PBServer.PutAppend", args, &reply)
+
+		if !ok || reply.Err == ErrWrongServer {
+			// update view
+			debug("to %s putappend error: %s", ck.view.Primary, reply.Err)
+			ck.view, _ = ck.vs.Get()
+		} else {
+			return
+		}
+	}
 }
 
 //

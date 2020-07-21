@@ -24,6 +24,17 @@ type PBServer struct {
 	// Your declarations here.
 }
 
+const Debug = false
+
+func enableDebug() bool {
+	return Debug
+}
+
+func debug(format string, a ...interface{}) {
+	if enableDebug() {
+		fmt.Printf(format+"\n", a...)
+	}
+}
 
 func (pb *PBServer) Get(args *GetArgs, reply *GetReply) error {
 
