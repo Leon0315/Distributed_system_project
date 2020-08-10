@@ -20,8 +20,10 @@ type PBServer struct {
 	dead       int32 // for testing
 	unreliable int32 // for testing
 	me         string
-	vs         *viewservice.Clerk
-	// Your declarations here.
+  vs         *viewservice.Clerk
+  data map[string]string
+  seen map[int64]bool
+  view viewservice.View
 }
 
 const Debug = false
@@ -36,18 +38,37 @@ func debug(format string, a ...interface{}) {
 	}
 }
 
-func (pb *PBServer) Get(args *GetArgs, reply *GetReply) error {
-
-	// Your code here.
-
-	return nil
+func (pb *PBServer) isPrimary() bool {
+	return pb.view.Primary == pb.me
 }
 
+func (pb *PBServer) isDuplicateSeq(seq int64) bool {
+	_, ok := pb.seen[seq]
+	if ok {
+		return true
+	}
+	pb.seen[seq] = true
 
-func (pb *PBServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error {
+	return false
+}
 
-	// Your code here.
+func (pb *PBServer) Get(args *GetArgs, reply *GetReply) error {
+  pb.mu.Lock()
+  defer pb.mu.Unlock()
 
+  if !pb.isPrimary() {
+		reply.Err = ErrWrongServer
+		return nil
+	}
+
+	value, ok := pb.data[args.Key]
+	if !ok {
+		reply.Err = ErrNoKey
+		return nil
+	}
+
+	reply.Err = OK
+	reply.Value = value
 
 	return nil
 }
@@ -60,8 +81,23 @@ func (pb *PBServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error 
 //   manage transfer of state from primary to new backup.
 //
 func (pb *PBServer) tick() {
+  pb.mu.Lock()
+	defer pb.mu.Unlock()
 
-	// Your code here.
+	view, err := pb.vs.Ping(pb.view.Viewnum)
+	if err != nil {
+
+	}
+	if view.Viewnum != pb.view.Viewnum {
+		// view changed
+		if view.Primary == pb.me && view.Backup != pb.view.Backup && view.Backup != "" {
+			// update all data && seq to backup
+			args := &SyncArgs{Data: pb.data, Seen: pb.seen}
+			var reply SyncReply
+			call(view.Backup, "PBServer.Sync", args, &reply)
+		}
+	}
+	pb.view = view
 }
 
 // tell the server to shut itself down.
@@ -95,6 +131,10 @@ func StartServer(vshost string, me string) *PBServer {
 	pb.me = me
 	pb.vs = viewservice.MakeClerk(me, vshost)
 	// Your pb.* initializations here.
+
+  pb.data = make(map[string]string)
+  pb.seen = make(map[int64]bool)
+  pb.view = viewservice.View{Viewnum: 0, Primary: "", Backup: ""}
 
 	rpcs := rpc.NewServer()
 	rpcs.Register(pb)
