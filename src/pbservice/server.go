@@ -111,6 +111,35 @@ func (pb *PBServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error 
 
 	return nil
 }
+
+func (pb *PBServer) SyncUpdate(args *SyncUpdateArgs, reply *SyncUpdateReply) error {
+	pb.mu.Lock()
+	defer pb.mu.Unlock()
+
+	_, ok := pb.seen[args.Seq]
+	if ok {
+		return nil
+	}
+
+	pb.seen[args.Seq] = true
+	pb.data[args.Key] = args.Value
+
+	return nil
+}
+
+func (pb *PBServer) Sync(args *SyncArgs, reply *SyncReply) error {
+	pb.mu.Lock()
+	defer pb.mu.Unlock()
+	pb.data = args.Data
+	pb.seen = args.Seen
+
+	if enableDebug() {
+		for key, value := range pb.data {
+			debug("sync %s %s:%s", pb.me, key, value)
+		}
+	}
+	return nil
+}
 //
 // ping the viewserver periodically.
 // if view changed:
