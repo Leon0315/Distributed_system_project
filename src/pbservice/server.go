@@ -73,7 +73,44 @@ func (pb *PBServer) Get(args *GetArgs, reply *GetReply) error {
 	return nil
 }
 
+func (pb *PBServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error {
 
+	// Your code here.
+	debug("me: %s, op: %s, %v:%s:%s", pb.me, args.Op, args.Seq, args.Key, args.Value)
+
+	pb.mu.Lock()
+	defer pb.mu.Unlock()
+
+	if !pb.isPrimary() {
+		reply.Err = ErrWrongServer
+		return nil
+	}
+
+	reply.Err = OK
+	if pb.isDuplicateSeq(args.Seq) {
+		return nil
+	}
+	var value string
+	if args.Op == Put {
+		value = args.Value
+	} else {
+		oldValue, ok := pb.data[args.Key]
+		if !ok {
+			oldValue = ""
+		}
+		value = oldValue + args.Value
+	}
+	pb.data[args.Key] = value
+
+	// sync update result to backup
+	if pb.view.Primary == pb.me && pb.view.Backup != "" {
+		syncArgs := &SyncUpdateArgs{Key: args.Key, Value: value, Seq: args.Seq}
+		var syncReply SyncUpdateReply
+		call(pb.view.Backup, "PBServer.SyncUpdate", syncArgs, &syncReply)
+	}
+
+	return nil
+}
 //
 // ping the viewserver periodically.
 // if view changed:
