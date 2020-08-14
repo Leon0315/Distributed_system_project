@@ -2,6 +2,7 @@ package viewservice
 
 import "net/rpc"
 import "fmt"
+import "time"
 
 //
 // the viewservice Clerk lives in the client
@@ -59,12 +60,15 @@ func (ck *Clerk) Ping(viewnum uint) (View, error) {
 	args.Me = ck.me
 	args.Viewnum = viewnum
 	var reply PingReply
+	t0 := time.Now()
 
 	// send an RPC request, wait for the reply.
 	ok := call(ck.server, "ViewServer.Ping", args, &reply)
+	t1 := time.Now()
 	if ok == false {
 		return View{}, fmt.Errorf("Ping(%v) failed", viewnum)
 	}
+	fmt.Println("ping time: ",t1.Sub(t0))
 
 	return reply.View, nil
 }

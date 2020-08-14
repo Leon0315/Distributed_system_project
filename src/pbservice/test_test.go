@@ -33,7 +33,7 @@ func port(tag string, host int) string {
 	return s
 }
 
-// 基本的测试用例
+//basic test cases
 func TestBasicFail(t *testing.T) {
 	runtime.GOMAXPROCS(4)
 
@@ -47,6 +47,7 @@ func TestBasicFail(t *testing.T) {
 
 	fmt.Printf("Test: Single primary, no backup ...\n")
 
+	//t0 := time.Now()
 	s1 := StartServer(vshost, port(tag, 1))
 
 	deadtime := viewservice.PingInterval * viewservice.DeadPings
@@ -76,6 +77,9 @@ func TestBasicFail(t *testing.T) {
 
 	fmt.Printf("Test: Add a backup ...\n")
 
+	countx := int(vs.GetRPCCount())
+	timex := time.Now()
+
 	s2 := StartServer(vshost, port(tag, 2))
 	for i := 0; i < viewservice.DeadPings*2; i++ {
 		v, _ := vck.Get()
@@ -89,14 +93,19 @@ func TestBasicFail(t *testing.T) {
 		t.Fatal("backup never came up")
 	}
 
-	ck.Put("3", "33")
-	check(ck, "3", "33")
+	// ck.Put("3", "33")
+	// check(ck, "3", "33")
 
 	// give the backup time to initialize
 	time.Sleep(3 * viewservice.PingInterval)
 
 	ck.Put("4", "44")
 	check(ck, "4", "44")
+
+	county := int(vs.GetRPCCount())
+	timey := time.Now()
+	fmt.Print("normal rpc number: ", county - countx)
+	fmt.Print("normal time: ", timey.Sub(timex))
 
 	fmt.Printf("  ... Passed\n")
 
@@ -141,7 +150,7 @@ func TestBasicFail(t *testing.T) {
 	}
 
 	check(ck, "1", "v1a")
-	check(ck, "3", "33")
+	//check(ck, "3", "33")
 	check(ck, "4", "44")
 
 	fmt.Printf("  ... Passed\n")
@@ -176,7 +185,7 @@ func TestBasicFail(t *testing.T) {
 	time.Sleep(time.Second)
 }
 
-// 测试append操作
+// test append
 func TestAtMostOnce(t *testing.T) {
 	runtime.GOMAXPROCS(4)
 
@@ -231,7 +240,6 @@ func TestAtMostOnce(t *testing.T) {
 }
 
 // Put right after a backup dies.
-// 测试干掉backup、primary之后，查看前面写入的值后面的backup是否正确保存了
 func TestFailPut(t *testing.T) {
 	runtime.GOMAXPROCS(4)
 
@@ -321,9 +329,8 @@ func TestFailPut(t *testing.T) {
 // do a bunch of concurrent Put()s on the same key,
 // then check that primary and backup have identical values.
 // i.e. that they processed the Put()s in the same order.
-// 测试并发Put相同key的数据，primary和backup是否有相同的值
 func TestConcurrentSame(t *testing.T) {
-	runtime.GOMAXPROCS(4)
+	runtime.GOMAXPROCS(2)
 
 	tag := "cs"
 	vshost := port(tag+"v", 1)
@@ -353,8 +360,9 @@ func TestConcurrentSame(t *testing.T) {
 	done := int32(0)
 
 	view1, _ := vck.Get()
-	const nclients = 3
+	const nclients = 8
 	const nkeys = 2
+	t0 := time.Now()
 	for xi := 0; xi < nclients; xi++ {
 		go func(i int) {
 			ck := MakeClerk(vshost, "")
@@ -366,6 +374,8 @@ func TestConcurrentSame(t *testing.T) {
 			}
 		}(xi)
 	}
+	t1 := time.Now()
+
 
 	time.Sleep(5 * time.Second)
 	atomic.StoreInt32(&done, 1)
@@ -407,6 +417,7 @@ func TestConcurrentSame(t *testing.T) {
 			t.Fatalf("Get(%v) from backup; wanted %v, got %v", i, vals[i], z)
 		}
 	}
+	fmt.Print("put time: \n" , t1.Sub(t0))
 
 	fmt.Printf("  ... Passed\n")
 
@@ -553,9 +564,9 @@ func TestConcurrentSameAppend(t *testing.T) {
 	time.Sleep(time.Second)
 }
 
-//
+
 func TestConcurrentSameUnreliable(t *testing.T) {
-	runtime.GOMAXPROCS(4)
+	runtime.GOMAXPROCS(2)
 
 	tag := "csu"
 	vshost := port(tag+"v", 1)
@@ -565,7 +576,8 @@ func TestConcurrentSameUnreliable(t *testing.T) {
 
 	fmt.Printf("Test: Concurrent Put()s to the same key; unreliable ...\n")
 
-	const nservers = 2
+	t0 := time.Now()
+	const nservers = 8
 	var sa [nservers]*PBServer
 	for i := 0; i < nservers; i++ {
 		sa[i] = StartServer(vshost, port(tag, i+1))
@@ -592,7 +604,7 @@ func TestConcurrentSameUnreliable(t *testing.T) {
 	done := int32(0)
 
 	view1, _ := vck.Get()
-	const nclients = 3
+	const nclients = 8
 	const nkeys = 2
 	cha := []chan bool{}
 	for xi := 0; xi < nclients; xi++ {
@@ -657,7 +669,8 @@ func TestConcurrentSameUnreliable(t *testing.T) {
 			t.Fatalf("Get(%v) from backup; wanted %v, got %v", i, vals[i], z)
 		}
 	}
-
+	t1 := time.Now()
+	fmt.Print("put unreliable: " , t1.Sub(t0))
 	fmt.Printf("  ... Passed\n")
 
 	for i := 0; i < nservers; i++ {
@@ -669,7 +682,6 @@ func TestConcurrentSameUnreliable(t *testing.T) {
 }
 
 // constant put/get while crashing and restarting servers
-// 测试在不断重启server的情况下，put、get是否正确
 func TestRepeatedCrash(t *testing.T) {
 	runtime.GOMAXPROCS(4)
 
@@ -782,7 +794,7 @@ func TestRepeatedCrash(t *testing.T) {
 	time.Sleep(time.Second)
 }
 
-// 测试在不断重启server的情况下，append是否正确
+// test append with crashes
 func TestRepeatedCrashUnreliable(t *testing.T) {
 	runtime.GOMAXPROCS(4)
 
@@ -954,10 +966,10 @@ func proxy(t *testing.T, port string, delay *int32) {
 	}()
 }
 
-// 测试模拟网络分区：启动两个server，set一个值。
-// 然后想办法让s1断开（注意不是kill掉）模拟网络分区情况，此时s2成为新的primary
-// 然后将前面同样的key设置一个值，然后恢复s1
-// 此时s1成为backup，并且能读取到最新的修改
+// // create a network partition and start a set operation
+// // make s1 unavailable, and s2 will become the new primary
+// // set a value for the previous key and make s1 alive
+// // s1 will become the backup and should read the value correctly
 func TestPartition1(t *testing.T) {
 	runtime.GOMAXPROCS(4)
 
@@ -971,13 +983,16 @@ func TestPartition1(t *testing.T) {
 
 	fmt.Printf("Test: Old primary does not serve Gets ...\n")
 
+	t0 := time.Now()
+	count1 := int(vs.GetRPCCount())
+
 	vshosta := vshost + "a"
 	os.Link(vshost, vshosta)
 
-	// 首先启动s1,s2这两个server,s1成为primary，s2成为backup
+	// s1 primary
 	s1 := StartServer(vshosta, port(tag, 1))
 	delay := int32(0)
-	// proxy函数用于模拟延迟访问某个server，超时参数在delay中
+	// use proxy to delay the server
 	proxy(t, port(tag, 1), &delay)
 
 	deadtime := viewservice.PingInterval * viewservice.DeadPings
@@ -993,13 +1008,10 @@ func TestPartition1(t *testing.T) {
 		t.Fatal("backup did not join view")
 	}
 
-	// 先set一个值
 	ck1.Put("a", "1")
 	check(ck1, "a", "1")
 
-	// 删除unix socket文件，这样s1就不能与viewserver通信
-	// 然后viewserver没有收到s1的ping消息，认为s1已经断开
-	// 注意：这里不是kill掉s1，而是断开通信，模拟网络分区
+	// remove socket file such that the s1 cannot talk to the viewserver anymore
 	os.Remove(vshosta)
 
 	// start a client Get(), but use proxy to delay it long
@@ -1007,20 +1019,19 @@ func TestPartition1(t *testing.T) {
 	// longer the primary.
 	atomic.StoreInt32(&delay, 4)
 	stale_get := make(chan bool)
-	// 启动一个协程，用于向s1查询值
+	// s1 lookup
 	go func() {
 		local_stale := false
 		defer func() { stale_get <- local_stale }()
 		x := ck1.Get("a")
 		if x == "1" {
-			// 如果get到的还是旧的值
+			// if we get the old value
 			local_stale = true
 		}
 	}()
 
 	// now s1 cannot talk to viewserver, so view will change,
 	// and s1 won't immediately realize.
-	// s1与viewserver不能通信了，viewsever让s2成为新的backup
 	for iter := 0; iter < viewservice.DeadPings*3; iter++ {
 		if vck.Primary() == s2.me {
 			break
@@ -1037,16 +1048,14 @@ func TestPartition1(t *testing.T) {
 	time.Sleep(2 * viewservice.PingInterval)
 
 	// change the value (on s2) so it's no longer "1".
-	// 在s2成为新的primary之后，修改前面相同key的数据
+	// s2 modified value after becomes the new primary
 	ck2 := MakeClerk(vshost, "")
 	ck2.Put("a", "111")
 	check(ck2, "a", "111")
 
 	// wait for the background Get to s1 to be delivered.
-	// 等待前面延迟访问s1的客户端返回查询结果
 	select {
 	case x := <-stale_get:
-		// 查询通过proxy延迟向s1查询的值，如果还是旧的值那么出错了
 		if x {
 			t.Fatalf("Get to old primary succeeded and produced stale value")
 		}
@@ -1054,6 +1063,10 @@ func TestPartition1(t *testing.T) {
 	}
 
 	check(ck2, "a", "111")
+	count2 := int(vs.GetRPCCount())
+	t1 := time.Now()
+	fmt.Print("RPC number: \n", count2 - count1)
+	fmt.Print("partitioned put time: ", t1.Sub(t0))
 
 	fmt.Printf("  ... Passed\n")
 
@@ -1062,8 +1075,7 @@ func TestPartition1(t *testing.T) {
 	vs.Kill()
 }
 
-// 这个用例和前面的类似，只不过TestPartition1使用了两个server
-// 这个用例使用了三个
+// test partition with addtional idle server
 func TestPartition2(t *testing.T) {
 	runtime.GOMAXPROCS(4)
 
@@ -1083,6 +1095,10 @@ func TestPartition2(t *testing.T) {
 	proxy(t, port(tag, 1), &delay)
 
 	fmt.Printf("Test: Partitioned old primary does not complete Gets ...\n")
+
+	t0 := time.Now()
+	count1 := int(vs.GetRPCCount())
+
 
 	deadtime := viewservice.PingInterval * viewservice.DeadPings
 	time.Sleep(deadtime * 2)
@@ -1158,6 +1174,12 @@ func TestPartition2(t *testing.T) {
 	}
 
 	check(ck2, "a", "2")
+
+	t1 := time.Now()
+	count2 := int(vs.GetRPCCount())
+	fmt.Print("addtional partitioned RPC number : \n", count2 - count1)
+
+	fmt.Print("additional partitioned time : \n", t1.Sub(t0))
 
 	fmt.Printf("  ... Passed\n")
 
