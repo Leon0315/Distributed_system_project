@@ -25,6 +25,16 @@ You can test the function of viewserver and P/B service independently.
 Navigate ~ src/viewservice/
 ```go test```
 
+[Run pbserver test]:
+
+~ src/pbservice/
+```export GOPATH=$HOME/6.824```
+```go test```
+
+
+# Test Description 
+
+ViewServer Test Description :
 
 [Test1. First Primary]
 
@@ -46,12 +56,7 @@ Navigate ~ src/viewservice/
 
 
 
-
-[Run pbserver test]:
-
-~ src/pbservice/
-```export GOPATH=$HOME/6.824```
-```go test```
+PBServer Test Description :
 
 TestBasicFail:
 
@@ -100,7 +105,3 @@ NetWork Partition test:
 [Test14. Old primary does not serve Gets]
 
 [Test15. Partitioned old primary does not complete Gets]
-
-
-
-
