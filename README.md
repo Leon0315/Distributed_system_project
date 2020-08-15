@@ -45,4 +45,57 @@ Navigate ~ src/viewservice/
 [Test9. Uninitialized server can't become primary]
 
 ~ src/pbservice/
+```export GOPATH=$HOME/6.824```
 ```go test```
+
+TestBasicFail:
+
+[Test1. Single primary, no backup]
+
+[Test2. Add a backup]
+
+[Test3. Count RPCs to viewserver]
+
+[Test4. Primary failure]
+
+[Test5. Kill last server, new one should not be active]
+
+TestAtMostOnce:
+
+[Test6. at-most-once Append; unreliable]
+
+TestFailPut:
+
+[Test7. Put() immediately after backup failure]
+
+[Test8. Put() immediately after primary failure]
+
+TestConcurrentSame:
+
+[Test9. Concurrent Put()s to the same key]
+
+TestConcurrentSameAppend:
+
+[Test10. Concurrent Append()s to the same key]
+
+TestConcurrentSameUnreliable:
+
+[Test11. Concurrent Put()s to the same key; unreliable]
+
+TestRepeatedCrash:
+
+[Test12. Repeated failures/restarts]
+
+TestRepeatedCrashUnreliable:
+
+[Test13. Repeated failures/restarts with concurrent updates to same key; unreliable]
+
+NetWork Partition test:
+
+[Test14. Old primary does not serve Gets]
+
+[Test15. Partitioned old primary does not complete Gets]
+
+
+
+
