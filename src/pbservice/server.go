@@ -26,30 +26,8 @@ type PBServer struct {
   view viewservice.View
 }
 
-const Debug = false
-
-func enableDebug() bool {
-	return Debug
-}
-
-func debug(format string, a ...interface{}) {
-	if enableDebug() {
-		fmt.Printf(format+"\n", a...)
-	}
-}
-
 func (pb *PBServer) isPrimary() bool {
 	return pb.view.Primary == pb.me
-}
-
-func (pb *PBServer) isDuplicateSeq(seq int64) bool {
-	_, ok := pb.seen[seq]
-	if ok {
-		return true
-	}
-	pb.seen[seq] = true
-
-	return false
 }
 
 func (pb *PBServer) Get(args *GetArgs, reply *GetReply) error {
@@ -75,9 +53,6 @@ func (pb *PBServer) Get(args *GetArgs, reply *GetReply) error {
 
 func (pb *PBServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error {
 
-	// Your code here.
-	debug("me: %s, op: %s, %v:%s:%s", pb.me, args.Op, args.Seq, args.Key, args.Value)
-
 	pb.mu.Lock()
 	defer pb.mu.Unlock()
 
@@ -87,7 +62,7 @@ func (pb *PBServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error 
 	}
 
 	reply.Err = OK
-	if pb.isDuplicateSeq(args.Seq) {
+	if pb.checkDuplicate(args.Seq) {
 		return nil
 	}
 	var value string
@@ -106,38 +81,18 @@ func (pb *PBServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error 
 	if pb.view.Primary == pb.me && pb.view.Backup != "" {
 		syncArgs := &SyncUpdateArgs{Key: args.Key, Value: value, Seq: args.Seq}
 		var syncReply SyncUpdateReply
-		call(pb.view.Backup, "PBServer.SyncUpdate", syncArgs, &syncReply)
+		call(pb.view.Backup, "PBServer.UpdateBackup", syncArgs, &syncReply)
 	}
 
 	return nil
 }
 
-func (pb *PBServer) SyncUpdate(args *SyncUpdateArgs, reply *SyncUpdateReply) error {
-	pb.mu.Lock()
-	defer pb.mu.Unlock()
-
-	_, ok := pb.seen[args.Seq]
-	if ok {
-		return nil
-	}
-
-	pb.seen[args.Seq] = true
-	pb.data[args.Key] = args.Value
-
-	return nil
-}
 
 func (pb *PBServer) Sync(args *SyncArgs, reply *SyncReply) error {
 	pb.mu.Lock()
 	defer pb.mu.Unlock()
 	pb.data = args.Data
 	pb.seen = args.Seen
-
-	if enableDebug() {
-		for key, value := range pb.data {
-			debug("sync %s %s:%s", pb.me, key, value)
-		}
-	}
 	return nil
 }
 //
@@ -164,6 +119,31 @@ func (pb *PBServer) tick() {
 		}
 	}
 	pb.view = view
+}
+
+func (pb *PBServer) UpdateBackup(args *SyncUpdateArgs, reply *SyncUpdateReply) error {
+	pb.mu.Lock()
+	defer pb.mu.Unlock()
+
+	_, ok := pb.seen[args.Seq]
+	if ok {
+		return nil
+	}
+
+	pb.seen[args.Seq] = true
+	pb.data[args.Key] = args.Value
+
+	return nil
+}
+
+func (pb *PBServer) checkDuplicate(seq int64) bool {
+	_, ok := pb.seen[seq]
+	if ok {
+		return true
+	}
+	pb.seen[seq] = true
+
+	return false
 }
 
 // tell the server to shut itself down.

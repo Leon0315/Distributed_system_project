@@ -110,7 +110,6 @@ func (ck *Clerk) PutAppend(key string, value string, op string) {
 
 		if !ok || reply.Err == ErrWrongServer {
 			// update view
-			debug("to %s putappend error: %s", ck.view.Primary, reply.Err)
 			ck.view, _ = ck.vs.Get()
 		} else {
 			return

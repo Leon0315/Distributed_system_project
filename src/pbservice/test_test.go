@@ -456,7 +456,6 @@ func checkAppends(t *testing.T, v string, counts []int) {
 // do a bunch of concurrent Append()s on the same key,
 // then check that primary and backup have identical values.
 // i.e. that they processed the Append()s in the same order.
-// 测试并发Append相同key的数据，primary和backup是否有相同的值
 func TestConcurrentSameAppend(t *testing.T) {
 	runtime.GOMAXPROCS(4)
 
@@ -693,7 +692,10 @@ func TestRepeatedCrash(t *testing.T) {
 
 	fmt.Printf("Test: Repeated failures/restarts ...\n")
 
-	const nservers = 3
+	t0 := time.Now()
+	count1 := int(vs.GetRPCCount())
+
+	const nservers = 9
 	var sa [nservers]*PBServer
 	samu := sync.Mutex{}
 	for i := 0; i < nservers; i++ {
@@ -782,6 +784,12 @@ func TestRepeatedCrash(t *testing.T) {
 		t.Fatalf("final Put/Get failed")
 	}
 
+	t1 := time.Now()
+	count2 := int(vs.GetRPCCount())
+
+	fmt.Print("repeated crash time: ", t1.Sub(t0))
+	fmt.Print("repeated rpc count: ", count2-count1)
+
 	fmt.Printf("  ... Passed\n")
 
 	for i := 0; i < nservers; i++ {
@@ -805,8 +813,9 @@ func TestRepeatedCrashUnreliable(t *testing.T) {
 	vck := viewservice.MakeClerk("", vshost)
 
 	fmt.Printf("Test: Repeated failures/restarts with concurrent updates to same key; unreliable ...\n")
-
-	const nservers = 3
+	t0 := time.Now()
+	count1 := int(vs.GetRPCCount())
+	const nservers = 9
 	var sa [nservers]*PBServer
 	samu := sync.Mutex{}
 	for i := 0; i < nservers; i++ {
@@ -894,7 +903,11 @@ func TestRepeatedCrashUnreliable(t *testing.T) {
 	if v := ck.Get("aaa"); v != "bbb" {
 		t.Fatalf("final Put/Get failed")
 	}
+	t1 := time.Now()
+	count2 := int(vs.GetRPCCount())
 
+	fmt.Print("repeated crash unreliable time: ", t1.Sub(t0))
+	fmt.Print("repeated crash unreliable rpc: ", count2-count1)
 	fmt.Printf("  ... Passed\n")
 
 	for i := 0; i < nservers; i++ {
