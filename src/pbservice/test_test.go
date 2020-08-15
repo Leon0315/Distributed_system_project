@@ -1,19 +1,22 @@
 package pbservice
 
-import "viewservice"
-import "fmt"
-import "io"
-import "net"
-import "testing"
-import "time"
-import "log"
-import "runtime"
-import "math/rand"
-import "os"
-import "sync"
-import "strconv"
-import "strings"
-import "sync/atomic"
+import (
+	"fmt"
+	"io"
+	"log"
+	"math/rand"
+	"net"
+	"os"
+	"runtime"
+	"strconv"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"testing"
+	"time"
+
+	"../viewservice"
+)
 
 func check(ck *Clerk, key string, value string) {
 	v := ck.Get(key)
@@ -104,7 +107,7 @@ func TestBasicFail(t *testing.T) {
 
 	county := int(vs.GetRPCCount())
 	timey := time.Now()
-	fmt.Print("normal rpc number: ", county - countx)
+	fmt.Print("normal rpc number: ", county-countx)
 	fmt.Print("normal time: ", timey.Sub(timex))
 
 	fmt.Printf("  ... Passed\n")
@@ -376,7 +379,6 @@ func TestConcurrentSame(t *testing.T) {
 	}
 	t1 := time.Now()
 
-
 	time.Sleep(5 * time.Second)
 	atomic.StoreInt32(&done, 1)
 	time.Sleep(time.Second)
@@ -417,7 +419,7 @@ func TestConcurrentSame(t *testing.T) {
 			t.Fatalf("Get(%v) from backup; wanted %v, got %v", i, vals[i], z)
 		}
 	}
-	fmt.Print("put time: \n" , t1.Sub(t0))
+	fmt.Print("put time: \n", t1.Sub(t0))
 
 	fmt.Printf("  ... Passed\n")
 
@@ -563,7 +565,6 @@ func TestConcurrentSameAppend(t *testing.T) {
 	time.Sleep(time.Second)
 }
 
-
 func TestConcurrentSameUnreliable(t *testing.T) {
 	runtime.GOMAXPROCS(2)
 
@@ -669,7 +670,7 @@ func TestConcurrentSameUnreliable(t *testing.T) {
 		}
 	}
 	t1 := time.Now()
-	fmt.Print("put unreliable: " , t1.Sub(t0))
+	fmt.Print("put unreliable: ", t1.Sub(t0))
 	fmt.Printf("  ... Passed\n")
 
 	for i := 0; i < nservers; i++ {
@@ -1078,7 +1079,7 @@ func TestPartition1(t *testing.T) {
 	check(ck2, "a", "111")
 	count2 := int(vs.GetRPCCount())
 	t1 := time.Now()
-	fmt.Print("RPC number: \n", count2 - count1)
+	fmt.Print("RPC number: \n", count2-count1)
 	fmt.Print("partitioned put time: ", t1.Sub(t0))
 
 	fmt.Printf("  ... Passed\n")
@@ -1111,7 +1112,6 @@ func TestPartition2(t *testing.T) {
 
 	t0 := time.Now()
 	count1 := int(vs.GetRPCCount())
-
 
 	deadtime := viewservice.PingInterval * viewservice.DeadPings
 	time.Sleep(deadtime * 2)
@@ -1190,7 +1190,7 @@ func TestPartition2(t *testing.T) {
 
 	t1 := time.Now()
 	count2 := int(vs.GetRPCCount())
-	fmt.Print("addtional partitioned RPC number : \n", count2 - count1)
+	fmt.Print("addtional partitioned RPC number : \n", count2-count1)
 
 	fmt.Print("additional partitioned time : \n", t1.Sub(t0))
 
