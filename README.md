@@ -10,7 +10,7 @@ Below is a diagram to show the overall system structure.
 ![Screenshot](system_stru.png) 
 
 Below is a pbserver's data flow 
-![Screenshot](PBServer_Data_Flow.png) 
+![Screenshot](data_flow.png) 
 
 
 # How to test
