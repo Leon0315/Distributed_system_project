@@ -9,6 +9,7 @@ The primary/backup service handles the client request on database and return the
 Below is a diagram to show the overall system structure.
 ![Screenshot](system_stru.png) 
 
+Below is a pbserver's data flow 
 ![Screenshot](PBServer_Data_Flow.png) 
 
 
