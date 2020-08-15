@@ -9,6 +9,8 @@ The primary/backup service handles the client request on database and return the
 Below is a diagram to show the overall system structure.
 ![Screenshot](system_stru.png) 
 
+
+
 # How to test
 You can test the function of viewserver and P/B service independently. 
 
