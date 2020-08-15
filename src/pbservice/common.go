@@ -1,30 +1,35 @@
 package pbservice
 
-import "viewservice"
+import "time"
+
 const (
-	OK             = "OK"
-	ErrNoKey       = "ErrNoKey"
-	ErrWrongServer = "ErrWrongServer"
+	OK                = "OK"
+	ErrNoKey          = "ErrNoKey"
+	ErrWrongServer    = "ErrWrongServer"
+	ErrWrongView      = "ErrWrongView"
+	ErrBackupNotReady = "ErrBackupNotReady"
+	ErrIdle           = "ErrIdle"
+	ErrLostBackup     = "ErrLostBackup"
+	Primary           = "Primary"
+	Backup            = "Backup"
+	Put               = "Put"
+	Append            = "Append"
 )
 
 type Err string
 
-const (
-	Put    = "Put"
-	Append = "Append"
-)
-
-
 // Put or Append
 type PutAppendArgs struct {
 	Key   string
-  Value string
-  Seq int64
-  Op string
+	Value string
 	// You'll have to add definitions here.
 
 	// Field names must start with capital letters,
 	// otherwise RPC will break.
+	Op   string
+	Id   int64
+	No   uint
+	Isfp bool // is from primary, otherwise is targeted at primary
 }
 
 type PutAppendReply struct {
@@ -34,15 +39,8 @@ type PutAppendReply struct {
 type GetArgs struct {
 	Key string
 	// You'll have to add definitions here.
-}
-
-type SyncArgs struct {
-	Data map[string]string
-	Seen map[int64]bool
-	View viewservice.View
-}
-
-type SyncReply struct {
+	Isfp    bool
+	Viewnum uint
 }
 
 type GetReply struct {
@@ -50,11 +48,18 @@ type GetReply struct {
 	Value string
 }
 
-type SyncUpdateArgs struct {
-	Key   string
-	Value string
-	Seq   int64
+// Your RPC definitions here.
+type GetDBArgs struct {
 }
 
-type SyncUpdateReply struct {
+type GetDBReply struct {
+	Err     Err
+	Time    time.Time
+	DBState DBState
+}
+
+type DBState struct {
+	Data    map[string]string
+	History map[int64]struct{}
+	Plastno uint
 }

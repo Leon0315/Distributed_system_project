@@ -1,18 +1,19 @@
 package pbservice
 
-import "net"
-import "fmt"
-import "net/rpc"
-import "log"
-import "time"
-import "viewservice"
-import "sync"
-import "sync/atomic"
-import "os"
-import "syscall"
-import "math/rand"
+import (
+	"fmt"
+	"log"
+	"math/rand"
+	"net"
+	"net/rpc"
+	"os"
+	"sync"
+	"sync/atomic"
+	"syscall"
+	"time"
 
-
+	"../viewservice"
+)
 
 type PBServer struct {
 	mu         sync.Mutex
@@ -20,81 +21,19 @@ type PBServer struct {
 	dead       int32 // for testing
 	unreliable int32 // for testing
 	me         string
-  vs         *viewservice.Clerk
-  data map[string]string
-  seen map[int64]bool
-  view viewservice.View
-}
-
-func (pb *PBServer) isPrimary() bool {
-	return pb.view.Primary == pb.me
+	vs         *viewservice.Clerk
 }
 
 func (pb *PBServer) Get(args *GetArgs, reply *GetReply) error {
-  pb.mu.Lock()
-  defer pb.mu.Unlock()
-
-  if !pb.isPrimary() {
-		reply.Err = ErrWrongServer
-		return nil
-	}
-
-	value, ok := pb.data[args.Key]
-	if !ok {
-		reply.Err = ErrNoKey
-		return nil
-	}
-
-	reply.Err = OK
-	reply.Value = value
 
 	return nil
 }
 
 func (pb *PBServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error {
 
-	pb.mu.Lock()
-	defer pb.mu.Unlock()
-
-	if !pb.isPrimary() {
-		reply.Err = ErrWrongServer
-		return nil
-	}
-
-	reply.Err = OK
-	if pb.checkDuplicate(args.Seq) {
-		return nil
-	}
-	var value string
-	if args.Op == Put {
-		value = args.Value
-	} else {
-		oldValue, ok := pb.data[args.Key]
-		if !ok {
-			oldValue = ""
-		}
-		value = oldValue + args.Value
-	}
-	pb.data[args.Key] = value
-
-	// sync update result to backup
-	if pb.view.Primary == pb.me && pb.view.Backup != "" {
-		syncArgs := &SyncUpdateArgs{Key: args.Key, Value: value, Seq: args.Seq}
-		var syncReply SyncUpdateReply
-		call(pb.view.Backup, "PBServer.UpdateBackup", syncArgs, &syncReply)
-	}
-
 	return nil
 }
 
-
-func (pb *PBServer) Sync(args *SyncArgs, reply *SyncReply) error {
-	pb.mu.Lock()
-	defer pb.mu.Unlock()
-	pb.data = args.Data
-	pb.seen = args.Seen
-	return nil
-}
 //
 // ping the viewserver periodically.
 // if view changed:
@@ -102,48 +41,7 @@ func (pb *PBServer) Sync(args *SyncArgs, reply *SyncReply) error {
 //   manage transfer of state from primary to new backup.
 //
 func (pb *PBServer) tick() {
-  pb.mu.Lock()
-	defer pb.mu.Unlock()
 
-	view, err := pb.vs.Ping(pb.view.Viewnum)
-	if err != nil {
-
-	}
-	if view.Viewnum != pb.view.Viewnum {
-		// view changed
-		if view.Primary == pb.me && view.Backup != pb.view.Backup && view.Backup != "" {
-			// update all data && seq to backup
-			args := &SyncArgs{Data: pb.data, Seen: pb.seen}
-			var reply SyncReply
-			call(view.Backup, "PBServer.Sync", args, &reply)
-		}
-	}
-	pb.view = view
-}
-
-func (pb *PBServer) UpdateBackup(args *SyncUpdateArgs, reply *SyncUpdateReply) error {
-	pb.mu.Lock()
-	defer pb.mu.Unlock()
-
-	_, ok := pb.seen[args.Seq]
-	if ok {
-		return nil
-	}
-
-	pb.seen[args.Seq] = true
-	pb.data[args.Key] = args.Value
-
-	return nil
-}
-
-func (pb *PBServer) checkDuplicate(seq int64) bool {
-	_, ok := pb.seen[seq]
-	if ok {
-		return true
-	}
-	pb.seen[seq] = true
-
-	return false
 }
 
 // tell the server to shut itself down.
@@ -171,16 +69,11 @@ func (pb *PBServer) isunreliable() bool {
 	return atomic.LoadInt32(&pb.unreliable) != 0
 }
 
-
 func StartServer(vshost string, me string) *PBServer {
 	pb := new(PBServer)
 	pb.me = me
 	pb.vs = viewservice.MakeClerk(me, vshost)
 	// Your pb.* initializations here.
-
-  pb.data = make(map[string]string)
-  pb.seen = make(map[int64]bool)
-  pb.view = viewservice.View{Viewnum: 0, Primary: "", Backup: ""}
 
 	rpcs := rpc.NewServer()
 	rpcs.Register(pb)
