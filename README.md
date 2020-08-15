@@ -44,6 +44,11 @@ Navigate ~ src/viewservice/
 
 [Test9. Uninitialized server can't become primary]
 
+
+
+
+[Run pbserver test]:
+
 ~ src/pbservice/
 ```export GOPATH=$HOME/6.824```
 ```go test```
